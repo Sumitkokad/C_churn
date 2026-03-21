@@ -42,3 +42,9 @@ This project follows a complete **End-to-End Machine Learning Pipeline**:
 
 ```text
 Data Collection → Data Cleaning → Feature Engineering → Model Training → Hyperparameter Tuning → Evaluation → Deployment
+```
+---
+
+## Make Predictions 
+Check This Link- 
+Streamlit https://share.google/gvWw09JZsb7c5yHD5
