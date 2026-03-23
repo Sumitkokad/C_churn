@@ -16,12 +16,13 @@
 
 ## 📌 Project Overview
 
-Customer churn is a critical business problem where customers stop using a company's service. This project builds a **Machine Learning-based prediction system** to identify whether a customer is likely to churn or not.
+Customer churn is a critical business problem where customers stop using a company's service. This project builds a **Machine Learning-based prediction system** to identify whether a customer is likely to churn or not churn means the customer stops using the comapany serivce .
 
 💡 By predicting churn in advance, companies can:
 - Reduce revenue loss  
 - Improve customer satisfaction  
 - Take proactive retention actions  
+- A customer stops using a company’s service is known as churn .
 
 ---
 
