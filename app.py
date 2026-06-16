@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 import os
 
 # =============================================================================
@@ -22,7 +22,6 @@ st.set_page_config(
 # =============================================================================
 st.markdown("""
 <style>
-    /* Main header */
     .main-header {
         font-size: 2.8rem;
         font-weight: 700;
@@ -38,7 +37,6 @@ st.markdown("""
         border-bottom: 2px solid #eaeef2;
         padding-bottom: 0.3rem;
     }
-    /* Metric cards */
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 12px;
@@ -91,13 +89,11 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    /* Responsive tweaks */
     @media (max-width: 768px) {
         .main-header { font-size: 2rem; }
         .metric-value { font-size: 1.6rem; }
         .metric-card { padding: 12px; }
     }
-    /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -109,52 +105,81 @@ st.markdown("""
 # =============================================================================
 @st.cache_resource
 def load_model():
-    """Load the trained model and scaler."""
-    scaler = joblib.load('scaler.pkl')
-    model = joblib.load('best_model.pkl')
-    return scaler, model
+    """Load the trained SVM model and StandardScaler."""
+    try:
+        scaler = joblib.load('scaler.pkl')
+        model = joblib.load('best_model.pkl')
+        return scaler, model
+    except Exception as e:
+        st.error(f"Error loading model/scaler: {e}")
+        st.stop()
 
 scaler, model = load_model()
 
 # =============================================================================
-# LOAD DATA (IF AVAILABLE) FOR VISUALIZATIONS
+# LOAD DATA (IF AVAILABLE) FOR INSIGHTS
 # =============================================================================
 @st.cache_data
-def load_training_data():
-    """Load the training dataset if available."""
-    if os.path.exists('churn_data.csv'):
-        df = pd.read_csv('churn_data.csv')
-        return df
+def load_data():
+    if os.path.exists('customer_churn_data.csv'):
+        df = pd.read_csv('customer_churn_data.csv')
+        # Preprocess the data (same as training)
+        df['InternetService'] = df['InternetService'].fillna('')
+        # Encode churn
+        df['Churn'] = df['Churn'].apply(lambda x: 1 if x == 'Yes' else 0)
+        # Encode Gender
+        df['Gender'] = df['Gender'].apply(lambda x: 1 if x == 'Female' else 0)
+        return df, "real"
     else:
-        return None
+        # If no CSV, generate synthetic data for visualisation only
+        np.random.seed(42)
+        n = 1000
+        age = np.random.normal(40, 10, n).clip(18, 80).astype(int)
+        gender = np.random.choice([0, 1], size=n, p=[0.5, 0.5])
+        tenure = np.random.exponential(20, n).clip(0, 72).astype(int)
+        monthly_charges = np.random.normal(70, 30, n).clip(10, 200)
+        # Simulate churn based on tenure and charges
+        logit = -2.5 + 0.02*age + 0.1*gender - 0.15*tenure + 0.03*monthly_charges + np.random.normal(0, 0.5, n)
+        prob = 1 / (1 + np.exp(-logit))
+        churn = (prob > 0.5).astype(int)
+        df = pd.DataFrame({
+            'Age': age,
+            'Gender': gender,
+            'Tenure': tenure,
+            'MonthlyCharges': monthly_charges.round(2),
+            'Churn': churn
+        })
+        return df, "synthetic"
 
-data = load_training_data()
+data, data_type = load_data()
 
 # =============================================================================
-# MODEL PERFORMANCE METRICS (HARDCODED OR COMPUTED)
+# COMPUTE MODEL PERFORMANCE ON THE LOADED DATA (FOR INSIGHTS)
 # =============================================================================
-# Since we don't have the actual test data, we'll define placeholder metrics.
-# If the user has a test set, they can replace these with actual values.
-# We'll also try to compute from training data if available.
-metrics = {
-    'Accuracy': 0.86,
-    'Precision': 0.82,
-    'Recall': 0.79,
-    'F1 Score': 0.80
-}
+@st.cache_data
+def compute_metrics(data):
+    X = data[['Age', 'Gender', 'Tenure', 'MonthlyCharges']]
+    X_scaled = scaler.transform(X)
+    y_pred = model.predict(X_scaled)
+    y_true = data['Churn']
+    return {
+        'accuracy': accuracy_score(y_true, y_pred),
+        'precision': precision_score(y_true, y_pred),
+        'recall': recall_score(y_true, y_pred),
+        'f1': f1_score(y_true, y_pred),
+        'y_pred': y_pred,
+        'y_true': y_true
+    }
 
-# If training data exists, we can compute metrics via cross-validation or on training set.
-# But to keep it simple, we use placeholders.
+metrics = compute_metrics(data)
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 def format_metric(value):
-    """Format metric as percentage with one decimal."""
     return f"{value:.1%}"
 
 def create_metric_card(title, value, subtitle="", color_gradient=True):
-    """Return HTML for a metric card."""
     gradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" if color_gradient else "#2c3e50"
     return f"""
     <div class="metric-card" style="background: {gradient};">
@@ -164,20 +189,10 @@ def create_metric_card(title, value, subtitle="", color_gradient=True):
     </div>
     """
 
-def get_feature_importance():
-    """Extract feature importance if model supports it."""
-    if hasattr(model, 'feature_importances_'):
-        features = ['Age', 'Gender', 'Tenure', 'MonthlyCharges']
-        importance = model.feature_importances_
-        return pd.DataFrame({'Feature': features, 'Importance': importance}).sort_values('Importance', ascending=False)
-    else:
-        return None
-
 # =============================================================================
 # SIDEBAR NAVIGATION
 # =============================================================================
 st.sidebar.title("🔍 Navigation")
-st.sidebar.markdown("---")
 app_mode = st.sidebar.radio(
     "Go to",
     ["🏠 Home", "🎯 Predict Churn", "📊 Model Insights"],
@@ -185,8 +200,8 @@ app_mode = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("📌 **About**\n\nThis app predicts customer churn using a machine learning model trained on historical data.")
-st.sidebar.info("🔒 Model version: 1.0")
+st.sidebar.info("📌 **About**\n\nThis app predicts customer churn using a trained SVM model.")
+st.sidebar.info(f"📊 Data source: {data_type.capitalize()} dataset")
 
 # =============================================================================
 # PAGE: HOME
@@ -194,14 +209,14 @@ st.sidebar.info("🔒 Model version: 1.0")
 if app_mode == "🏠 Home":
     st.markdown('<div class="main-header">🚀 Customer Churn Prediction</div>', unsafe_allow_html=True)
     st.markdown("#### Identify customers at risk of churning and take proactive actions.")
-    
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
         ### 📋 Problem Overview
-        Customer churn is a critical business metric. It refers to the percentage of customers who stop using a company's service over a specific period. 
+        Customer churn is a critical business metric. It refers to the percentage of customers who stop using a company's service over a specific period.
         High churn rates can significantly impact revenue and growth.
-        
+
         **Why predict churn?**
         - Reduce customer attrition
         - Improve customer satisfaction
@@ -211,69 +226,78 @@ if app_mode == "🏠 Home":
     with col2:
         st.markdown("""
         ### 🧠 Solution Approach
-        This app uses a **Machine Learning model** trained on historical customer data to predict whether a customer will churn.
-        
+        This app uses a **Machine Learning model** (SVM) trained on historical customer data to predict whether a customer will churn.
+
         **Features used:**
         - Age
         - Gender
         - Tenure (months with the company)
         - Monthly Charges
-        
-        **Model:** The best performing model (Random Forest / XGBoost) has been tuned and saved for deployment.
+
+        **Model:** A tuned Support Vector Classifier with balanced class weights and SMOTE for handling class imbalance.
         """)
-    
+
+    if data_type == "synthetic":
+        st.info("ℹ️ Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
+
     st.markdown("---")
-    
-    if data is not None:
-        st.markdown("### 📊 Dataset Snapshot")
-        st.dataframe(data.head(10), use_container_width=True)
-        
-        # Basic stats
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Customers", f"{len(data):,}")
-        with col2:
-            churn_rate = data['Churn'].mean() if 'Churn' in data.columns else 0
-            st.metric("Churn Rate", f"{churn_rate:.1%}")
-        with col3:
-            avg_tenure = data['Tenure'].mean() if 'Tenure' in data.columns else 0
-            st.metric("Avg Tenure (months)", f"{avg_tenure:.1f}")
-        
-        # Distribution plots
-        st.markdown("### 📈 Feature Distributions")
-        col1, col2 = st.columns(2)
-        with col1:
-            fig = px.histogram(data, x='Age', nbins=20, title='Age Distribution')
-            st.plotly_chart(fig, use_container_width=True)
-        with col2:
-            fig = px.histogram(data, x='Tenure', nbins=20, title='Tenure Distribution')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            fig = px.histogram(data, x='MonthlyCharges', nbins=20, title='Monthly Charges Distribution')
-            st.plotly_chart(fig, use_container_width=True)
-        with col2:
-            if 'Gender' in data.columns:
-                gender_counts = data['Gender'].value_counts().reset_index()
-                gender_counts.columns = ['Gender', 'Count']
-                fig = px.pie(gender_counts, values='Count', names='Gender', title='Gender Distribution')
-                st.plotly_chart(fig, use_container_width=True)
-        
-        if 'Churn' in data.columns:
-            st.markdown("### 🔍 Churn Analysis")
-            col1, col2 = st.columns(2)
-            with col1:
-                churn_counts = data['Churn'].value_counts().reset_index()
-                churn_counts.columns = ['Churn', 'Count']
-                fig = px.pie(churn_counts, values='Count', names='Churn', title='Churn vs Non-Churn')
-                st.plotly_chart(fig, use_container_width=True)
-            with col2:
-                # Churn by tenure
-                fig = px.box(data, x='Churn', y='Tenure', title='Tenure Distribution by Churn Status')
-                st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("ℹ️ Training dataset not found. Please add 'churn_data.csv' to view data insights.")
+    st.markdown("### 📊 Dataset Snapshot")
+    st.dataframe(data.head(10), use_container_width=True)
+
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Customers", f"{len(data):,}")
+    with col2:
+        churn_rate = data['Churn'].mean()
+        st.metric("Churn Rate", f"{churn_rate:.1%}")
+    with col3:
+        avg_tenure = data['Tenure'].mean()
+        st.metric("Avg Tenure (months)", f"{avg_tenure:.1f}")
+
+    # Distributions
+    st.markdown("### 📈 Feature Distributions")
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = px.histogram(data, x='Age', nbins=20, title='Age Distribution', color_discrete_sequence=['#1f77b4'])
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = px.histogram(data, x='Tenure', nbins=20, title='Tenure Distribution', color_discrete_sequence=['#ff7f0e'])
+        st.plotly_chart(fig, use_container_width=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = px.histogram(data, x='MonthlyCharges', nbins=20, title='Monthly Charges Distribution', color_discrete_sequence=['#2ca02c'])
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        gender_counts = data['Gender'].map({0: 'Male', 1: 'Female'}).value_counts().reset_index()
+        gender_counts.columns = ['Gender', 'Count']
+        fig = px.pie(gender_counts, values='Count', names='Gender', title='Gender Distribution', color_discrete_sequence=['#d62728', '#9467bd'])
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Churn analysis
+    st.markdown("### 🔍 Churn Analysis")
+    col1, col2 = st.columns(2)
+    with col1:
+        churn_counts = data['Churn'].map({0: 'No Churn', 1: 'Churn'}).value_counts().reset_index()
+        churn_counts.columns = ['Churn', 'Count']
+        fig = px.pie(churn_counts, values='Count', names='Churn', title='Churn vs Non-Churn', hole=0.4,
+                     color_discrete_sequence=['#2ca02c', '#d62728'])
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = px.box(data, x='Churn', y='Tenure', title='Tenure by Churn Status', color='Churn',
+                     color_discrete_sequence=['#2ca02c', '#d62728'])
+        st.plotly_chart(fig, use_container_width=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = px.box(data, x='Churn', y='MonthlyCharges', title='Monthly Charges by Churn Status',
+                     color='Churn', color_discrete_sequence=['#2ca02c', '#d62728'])
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = px.box(data, x='Churn', y='Age', title='Age by Churn Status',
+                     color='Churn', color_discrete_sequence=['#2ca02c', '#d62728'])
+        st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
 # PAGE: PREDICT CHURN
@@ -282,15 +306,15 @@ elif app_mode == "🎯 Predict Churn":
     st.markdown('<div class="main-header">🎯 Predict Customer Churn</div>', unsafe_allow_html=True)
     st.markdown("Enter customer details below to get a churn prediction.")
     st.markdown("---")
-    
+
     with st.form("prediction_form"):
         col1, col2 = st.columns(2)
         with col1:
             age = st.number_input("Age", min_value=18, max_value=100, value=30, help="Customer's age in years.")
             gender = st.selectbox("Gender", ['Male', 'Female'], help="Customer's gender.")
-            tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=10, help="Number of months the customer has been with the company.")
-            monthly_charges = st.number_input("Monthly Charges", min_value=0, value=150, help="Monthly service charges in USD.")
-        
+            tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=10, help="Number of months with the company.")
+            monthly_charges = st.number_input("Monthly Charges ($)", min_value=0.0, max_value=500.0, value=70.0, help="Monthly service charges.")
+
         with col2:
             st.markdown("### 💡 Feature Insights")
             st.info("""
@@ -299,34 +323,27 @@ elif app_mode == "🎯 Predict Churn":
             - **Tenure:** Longer tenure usually indicates lower churn risk.
             - **Monthly Charges:** Higher charges may increase churn likelihood.
             """)
-        
+
         submit = st.form_submit_button("🔮 Predict Churn", use_container_width=True)
-    
+
     if submit:
-        # Convert gender
-        gender_selected = 1 if gender == 'Female' else 0
-        
-        # Prepare input
-        X = np.array([[age, gender_selected, tenure, monthly_charges]])
-        
-        # Scale
+        # Convert gender: Female=1, Male=0 (as per training)
+        gender_encoded = 1 if gender == 'Female' else 0
+
+        # Prepare input array in the correct order: Age, Gender, Tenure, MonthlyCharges
+        X = np.array([[age, gender_encoded, tenure, monthly_charges]])
+
+        # Scale the input using the pre-fitted scaler
         X_scaled = scaler.transform(X)
-        
+
         # Predict
         prediction = model.predict(X_scaled)[0]
-        
-        # Get probability if available
-        if hasattr(model, 'predict_proba'):
-            proba = model.predict_proba(X_scaled)[0][1]
-            proba_text = f"{proba:.1%}"
-        else:
-            proba = None
-            proba_text = "N/A"
-        
+        proba = model.predict_proba(X_scaled)[0][1] if hasattr(model, 'predict_proba') else None
+
         # Display result
         st.markdown("---")
         st.markdown("### 📊 Prediction Result")
-        
+
         if prediction == 1:
             result_class = "Churn ❌"
             card_class = "result-churn"
@@ -335,17 +352,16 @@ elif app_mode == "🎯 Predict Churn":
             result_class = "No Churn ✅"
             card_class = "result-no-churn"
             color = "#2ca02c"
-        
+
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown(f"""
             <div class="result-box {card_class}" style="border-left-color: {color};">
                 <h2 style="color: {color};">{result_class}</h2>
-                <p style="font-size: 1.2rem;">Confidence: <strong>{proba_text}</strong></p>
+                <p style="font-size: 1.2rem;">Confidence: <strong>{proba:.1%}</strong></p>
             </div>
             """, unsafe_allow_html=True)
-        
-        # Display input summary
+
         with st.expander("View Input Details"):
             st.write(f"**Age:** {age}")
             st.write(f"**Gender:** {gender}")
@@ -359,65 +375,53 @@ elif app_mode == "📊 Model Insights":
     st.markdown('<div class="main-header">📊 Model Insights & Performance</div>', unsafe_allow_html=True)
     st.markdown("Understand how the model works and its evaluation metrics.")
     st.markdown("---")
-    
-    # Model performance metrics
-    st.markdown("### 🏆 Model Performance")
+
+    # Performance metrics
+    st.markdown("### 🏆 Model Performance (on available data)")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(create_metric_card("Accuracy", format_metric(metrics['Accuracy']), "Correct predictions"), unsafe_allow_html=True)
+        st.markdown(create_metric_card("Accuracy", format_metric(metrics['accuracy']), "Correct predictions"), unsafe_allow_html=True)
     with col2:
-        st.markdown(create_metric_card("Precision", format_metric(metrics['Precision']), "True positives / (TP+FP)"), unsafe_allow_html=True)
+        st.markdown(create_metric_card("Precision", format_metric(metrics['precision']), "TP / (TP+FP)"), unsafe_allow_html=True)
     with col3:
-        st.markdown(create_metric_card("Recall", format_metric(metrics['Recall']), "True positives / (TP+FN)"), unsafe_allow_html=True)
+        st.markdown(create_metric_card("Recall", format_metric(metrics['recall']), "TP / (TP+FN)"), unsafe_allow_html=True)
     with col4:
-        st.markdown(create_metric_card("F1 Score", format_metric(metrics['F1 Score']), "Harmonic mean of precision & recall"), unsafe_allow_html=True)
-    
-    st.caption("Metrics are computed on a held-out test set. Values are for demonstration.")
-    
-    # Feature importance
-    st.markdown("### 🔑 Feature Importance")
-    importance_df = get_feature_importance()
-    if importance_df is not None:
-        fig = px.bar(importance_df, x='Importance', y='Feature', orientation='h',
-                     title="Which factors influence churn the most?",
-                     text=importance_df['Importance'].apply(lambda x: f"{x:.2%}"),
-                     color='Importance', color_continuous_scale='Blues')
-        fig.update_traces(texttemplate='%{text}', textposition='outside')
-        fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.markdown(create_metric_card("F1 Score", format_metric(metrics['f1']), "Harmonic mean"), unsafe_allow_html=True)
+
+    if data_type == "synthetic":
+        st.caption("Metrics computed on synthetic dataset. For demonstration only.")
     else:
-        st.info("ℹ️ Feature importance not available for this model type.")
-    
-    # Confusion Matrix (Placeholder)
+        st.caption("Metrics computed on the loaded dataset. Actual test performance may vary.")
+
+    # Confusion Matrix
     st.markdown("### 📉 Confusion Matrix")
-    # We'll show a hypothetical confusion matrix if we had test data.
-    # Since we don't, we can create a synthetic one based on metrics.
-    # Or we can display a note.
-    st.info("""
-    **Confusion Matrix** (Illustrative)
-    
-    |               | Predicted No | Predicted Yes |
-    |---------------|--------------|---------------|
-    | Actual No     | 120          | 18            |
-    | Actual Yes    | 24           | 90            |
-    
-    *The above values are for demonstration only. Actual values depend on the test set.*
-    """)
-    
+    cm = confusion_matrix(metrics['y_true'], metrics['y_pred'])
+    labels = ['No Churn', 'Churn']
+    fig = px.imshow(cm, x=labels, y=labels, text_auto=True, color_continuous_scale='Blues', title="Confusion Matrix")
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Correlation heatmap
+    st.markdown("### 🔗 Feature Correlation")
+    # Use numeric columns only
+    corr = data[['Age', 'Gender', 'Tenure', 'MonthlyCharges', 'Churn']].corr()
+    fig = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Correlation Matrix")
+    fig.update_layout(height=450)
+    st.plotly_chart(fig, use_container_width=True)
+
     # Model details
     st.markdown("### 🤖 Model Details")
     st.write(f"**Model Type:** {type(model).__name__}")
     st.write(f"**Number of Features:** 4 (Age, Gender, Tenure, MonthlyCharges)")
     st.write("**Preprocessing:** StandardScaler used to scale numeric features.")
-    st.write("**Training Data:** Customer churn dataset.")
-    
-    # Download model report (mock)
+    st.write(f"**Training Data:** {len(data)} records used for evaluation.")
+
+    # Download report
     st.markdown("### 📥 Download Report")
     if st.button("Generate Model Report (CSV)"):
-        # Create a simple report
         report_data = {
             'Metric': ['Accuracy', 'Precision', 'Recall', 'F1 Score'],
-            'Value': [metrics['Accuracy'], metrics['Precision'], metrics['Recall'], metrics['F1 Score']]
+            'Value': [metrics['accuracy'], metrics['precision'], metrics['recall'], metrics['f1']]
         }
         report_df = pd.DataFrame(report_data)
         csv = report_df.to_csv(index=False)
