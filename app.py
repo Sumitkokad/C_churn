@@ -12,7 +12,7 @@ import os
 # =============================================================================
 st.set_page_config(
     page_title="Customer Churn Predictor",
-    page_icon="🔮",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -89,6 +89,13 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: #f8f9fa;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f8f9fa;
+    }
     @media (max-width: 768px) {
         .main-header { font-size: 2rem; }
         .metric-value { font-size: 1.6rem; }
@@ -164,9 +171,9 @@ def compute_metrics(data):
     y_true = data['Churn']
     return {
         'accuracy': accuracy_score(y_true, y_pred),
-        'precision': precision_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
-        'recall': recall_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
-        'f1': f1_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
+        'precision': precision_score(y_true, y_pred, zero_division=0),
+        'recall': recall_score(y_true, y_pred, zero_division=0),
+        'f1': f1_score(y_true, y_pred, zero_division=0),
         'y_pred': y_pred,
         'y_true': y_true
     }
@@ -192,22 +199,44 @@ def create_metric_card(title, value, subtitle="", color_gradient=True):
 # =============================================================================
 # SIDEBAR NAVIGATION
 # =============================================================================
-st.sidebar.title("🔍 Navigation")
+st.sidebar.title("Navigation")
+
+# Define page options
+page_options = ["Home", "Predict Churn", "Model Insights"]
+
+# Radio button with clean options
 app_mode = st.sidebar.radio(
-    "Go to",
-    [" Home", " Predict Churn", " Model Insights"],
-    index=0
+    "Select Page:",
+    page_options,
+    index=0,
+    key="navigation"
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info(" **About**\n\nThis app predicts customer churn using a trained SVM model.")
-st.sidebar.info(f" Data source: {data_type.capitalize()} dataset")
+
+# Sidebar with additional info
+with st.sidebar.expander("About", expanded=False):
+    st.markdown("""
+    This app predicts customer churn using a trained SVM model.
+    
+    **Features:**
+    - Age
+    - Gender  
+    - Tenure
+    - Monthly Charges
+    """)
+
+st.sidebar.info(f"Data source: {data_type.capitalize()} dataset")
+
+# Add a footer in sidebar
+st.sidebar.markdown("---")
+st.sidebar.caption("Built with Streamlit")
 
 # =============================================================================
 # PAGE: HOME
 # =============================================================================
-if app_mode == " Home":
-    st.markdown('<div class="main-header"> Customer Churn Prediction</div>', unsafe_allow_html=True)
+if app_mode == "Home":
+    st.markdown('<div class="main-header">Customer Churn Prediction</div>', unsafe_allow_html=True)
     st.markdown("#### Identify customers at risk of churning and take proactive actions.")
 
     col1, col2 = st.columns(2)
@@ -238,7 +267,7 @@ if app_mode == " Home":
         """)
 
     if data_type == "synthetic":
-        st.info(" Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
+        st.info("Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
 
     st.markdown("---")
     st.markdown("### Dataset Snapshot")
@@ -302,8 +331,8 @@ if app_mode == " Home":
 # =============================================================================
 # PAGE: PREDICT CHURN
 # =============================================================================
-elif app_mode == " Predict Churn":
-    st.markdown('<div class="main-header"> Predict Customer Churn</div>', unsafe_allow_html=True)
+elif app_mode == "Predict Churn":
+    st.markdown('<div class="main-header">Predict Customer Churn</div>', unsafe_allow_html=True)
     st.markdown("Enter customer details below to get a churn prediction.")
     st.markdown("---")
 
@@ -324,7 +353,7 @@ elif app_mode == " Predict Churn":
             - **Monthly Charges:** Higher charges may increase churn likelihood.
             """)
 
-        submit = st.form_submit_button(" Predict Churn", use_container_width=True)
+        submit = st.form_submit_button("Predict Churn", use_container_width=True)
 
     if submit:
         # Convert gender: Female=1, Male=0 (as per training)
@@ -355,14 +384,14 @@ elif app_mode == " Predict Churn":
 
         # Display result
         st.markdown("---")
-        st.markdown("### 📊 Prediction Result")
+        st.markdown("### Prediction Result")
 
         if prediction == 1:
-            result_class = "Churn ❌"
+            result_class = "Churn"
             card_class = "result-churn"
             color = "#d62728"
         else:
-            result_class = "No Churn ✅"
+            result_class = "No Churn"
             card_class = "result-no-churn"
             color = "#2ca02c"
 
@@ -385,8 +414,8 @@ elif app_mode == " Predict Churn":
 # =============================================================================
 # PAGE: MODEL INSIGHTS
 # =============================================================================
-elif app_mode == " Model Insights":
-    st.markdown('<div class="main-header">📊 Model Insights & Performance</div>', unsafe_allow_html=True)
+elif app_mode == "Model Insights":
+    st.markdown('<div class="main-header">Model Insights & Performance</div>', unsafe_allow_html=True)
     st.markdown("Understand how the model works and its evaluation metrics.")
     st.markdown("---")
 
@@ -408,7 +437,7 @@ elif app_mode == " Model Insights":
         st.caption("Metrics computed on the loaded dataset. Actual test performance may vary.")
 
     # Confusion Matrix
-    st.markdown("### 📉 Confusion Matrix")
+    st.markdown("### Confusion Matrix")
     cm = confusion_matrix(metrics['y_true'], metrics['y_pred'])
     labels = ['No Churn', 'Churn']
     fig = px.imshow(cm, x=labels, y=labels, text_auto=True, color_continuous_scale='Blues', title="Confusion Matrix")
@@ -416,7 +445,7 @@ elif app_mode == " Model Insights":
     st.plotly_chart(fig, use_container_width=True)
 
     # Correlation heatmap
-    st.markdown("### 🔗 Feature Correlation")
+    st.markdown("### Feature Correlation")
     # Use numeric columns only
     corr = data[['Age', 'Gender', 'Tenure', 'MonthlyCharges', 'Churn']].corr()
     fig = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Correlation Matrix")
@@ -431,7 +460,7 @@ elif app_mode == " Model Insights":
     st.write(f"**Training Data:** {len(data)} records used for evaluation.")
 
     # Download report
-    st.markdown("### 📥 Download Report")
+    st.markdown("### Download Report")
     if st.button("Generate Model Report (CSV)"):
         report_data = {
             'Metric': ['Accuracy', 'Precision', 'Recall', 'F1 Score'],
