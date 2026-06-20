@@ -164,9 +164,9 @@ def compute_metrics(data):
     y_true = data['Churn']
     return {
         'accuracy': accuracy_score(y_true, y_pred),
-        'precision': precision_score(y_true, y_pred),
-        'recall': recall_score(y_true, y_pred),
-        'f1': f1_score(y_true, y_pred),
+        'precision': precision_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
+        'recall': recall_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
+        'f1': f1_score(y_true, y_pred, zero_division=0),  # Fixed: Added zero_division parameter
         'y_pred': y_pred,
         'y_true': y_true
     }
@@ -213,7 +213,7 @@ if app_mode == " Home":
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
-        ###  Problem Overview
+        ### Problem Overview
         Customer churn is a critical business metric. It refers to the percentage of customers who stop using a company's service over a specific period.
         High churn rates can significantly impact revenue and growth.
 
@@ -225,7 +225,7 @@ if app_mode == " Home":
         """)
     with col2:
         st.markdown("""
-        ###  Solution Approach
+        ### Solution Approach
         This app uses a **Machine Learning model** (SVM) trained on historical customer data to predict whether a customer will churn.
 
         **Features used:**
@@ -241,7 +241,7 @@ if app_mode == " Home":
         st.info(" Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
 
     st.markdown("---")
-    st.markdown("###  Dataset Snapshot")
+    st.markdown("### Dataset Snapshot")
     st.dataframe(data.head(10), use_container_width=True)
 
     # KPIs
@@ -256,7 +256,7 @@ if app_mode == " Home":
         st.metric("Avg Tenure (months)", f"{avg_tenure:.1f}")
 
     # Distributions
-    st.markdown("###  Feature Distributions")
+    st.markdown("### Feature Distributions")
     col1, col2 = st.columns(2)
     with col1:
         fig = px.histogram(data, x='Age', nbins=20, title='Age Distribution', color_discrete_sequence=['#1f77b4'])
@@ -276,7 +276,7 @@ if app_mode == " Home":
         st.plotly_chart(fig, use_container_width=True)
 
     # Churn analysis
-    st.markdown("###  Churn Analysis")
+    st.markdown("### Churn Analysis")
     col1, col2 = st.columns(2)
     with col1:
         churn_counts = data['Churn'].map({0: 'No Churn', 1: 'Churn'}).value_counts().reset_index()
@@ -316,7 +316,7 @@ elif app_mode == " Predict Churn":
             monthly_charges = st.number_input("Monthly Charges ($)", min_value=0.0, max_value=500.0, value=70.0, help="Monthly service charges.")
 
         with col2:
-            st.markdown("###  Feature Insights")
+            st.markdown("### Feature Insights")
             st.info("""
             - **Age:** Younger customers may have higher churn rates.
             - **Gender:** Some patterns may exist in churn behavior.
@@ -338,7 +338,20 @@ elif app_mode == " Predict Churn":
 
         # Predict
         prediction = model.predict(X_scaled)[0]
-        proba = model.predict_proba(X_scaled)[0][1] if hasattr(model, 'predict_proba') else None
+        
+        # Check if model has predict_proba method
+        proba = None
+        if hasattr(model, 'predict_proba'):
+            proba = model.predict_proba(X_scaled)[0][1]
+        else:
+            # For SVM without probability, use decision function
+            if hasattr(model, 'decision_function'):
+                decision = model.decision_function(X_scaled)[0]
+                # Convert decision value to probability-like score using sigmoid
+                proba = 1 / (1 + np.exp(-decision))
+            else:
+                # Fallback
+                proba = float(prediction)
 
         # Display result
         st.markdown("---")
@@ -355,10 +368,11 @@ elif app_mode == " Predict Churn":
 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
+            confidence_display = f"{proba:.1%}" if proba is not None else "N/A"
             st.markdown(f"""
             <div class="result-box {card_class}" style="border-left-color: {color};">
                 <h2 style="color: {color};">{result_class}</h2>
-                <p style="font-size: 1.2rem;">Confidence: <strong>{proba:.1%}</strong></p>
+                <p style="font-size: 1.2rem;">Confidence: <strong>{confidence_display}</strong></p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -377,7 +391,7 @@ elif app_mode == " Model Insights":
     st.markdown("---")
 
     # Performance metrics
-    st.markdown("###  Model Performance (on available data)")
+    st.markdown("### Model Performance (on available data)")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(create_metric_card("Accuracy", format_metric(metrics['accuracy']), "Correct predictions"), unsafe_allow_html=True)
@@ -410,7 +424,7 @@ elif app_mode == " Model Insights":
     st.plotly_chart(fig, use_container_width=True)
 
     # Model details
-    st.markdown("###  Model Details")
+    st.markdown("### Model Details")
     st.write(f"**Model Type:** {type(model).__name__}")
     st.write(f"**Number of Features:** 4 (Age, Gender, Tenure, MonthlyCharges)")
     st.write("**Preprocessing:** StandardScaler used to scale numeric features.")
