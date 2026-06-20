@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Customer Churn Predictor",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded"  # This ensures sidebar is always expanded
 )
 
 # =============================================================================
@@ -197,9 +197,12 @@ def create_metric_card(title, value, subtitle="", color_gradient=True):
     """
 
 # =============================================================================
-# SIDEBAR NAVIGATION
+# SIDEBAR NAVIGATION - IMPROVED WITH DEBUG INFO
 # =============================================================================
-st.sidebar.title("Navigation")
+
+# Display a small note in the main area if sidebar is not visible
+st.sidebar.markdown("### Navigation")
+st.sidebar.markdown("---")
 
 # Define page options
 page_options = ["Home", "Predict Churn", "Model Insights"]
@@ -231,6 +234,21 @@ st.sidebar.info(f"Data source: {data_type.capitalize()} dataset")
 # Add a footer in sidebar
 st.sidebar.markdown("---")
 st.sidebar.caption("Built with Streamlit")
+
+# For debugging - show current page in sidebar
+st.sidebar.markdown(f"**Current Page:** {app_mode}")
+
+# =============================================================================
+# MAIN CONTENT AREA - Show sidebar toggle hint
+# =============================================================================
+
+# Add a small hint if sidebar might be collapsed
+st.markdown("""
+<div style="background-color: #e8f4f8; padding: 8px 15px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem; border-left: 4px solid #1f77b4;">
+    💡 <strong>Tip:</strong> Use the sidebar on the left to navigate between pages. 
+    Click the arrow icon in the top-left corner if the sidebar is hidden.
+</div>
+""", unsafe_allow_html=True)
 
 # =============================================================================
 # PAGE: HOME
