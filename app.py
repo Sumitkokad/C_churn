@@ -206,7 +206,7 @@ st.sidebar.info(f" Data source: {data_type.capitalize()} dataset")
 # =============================================================================
 # PAGE: HOME
 # =============================================================================
-if app_mode == "Home":
+if app_mode == " Home":
     st.markdown('<div class="main-header"> Customer Churn Prediction</div>', unsafe_allow_html=True)
     st.markdown("#### Identify customers at risk of churning and take proactive actions.")
 
