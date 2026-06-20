@@ -195,25 +195,25 @@ def create_metric_card(title, value, subtitle="", color_gradient=True):
 st.sidebar.title("🔍 Navigation")
 app_mode = st.sidebar.radio(
     "Go to",
-    ["🏠 Home", "🎯 Predict Churn", "📊 Model Insights"],
+    [" Home", " Predict Churn", " Model Insights"],
     index=0
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("📌 **About**\n\nThis app predicts customer churn using a trained SVM model.")
-st.sidebar.info(f"📊 Data source: {data_type.capitalize()} dataset")
+st.sidebar.info(" **About**\n\nThis app predicts customer churn using a trained SVM model.")
+st.sidebar.info(f" Data source: {data_type.capitalize()} dataset")
 
 # =============================================================================
 # PAGE: HOME
 # =============================================================================
-if app_mode == "🏠 Home":
-    st.markdown('<div class="main-header">🚀 Customer Churn Prediction</div>', unsafe_allow_html=True)
+if app_mode == "Home":
+    st.markdown('<div class="main-header"> Customer Churn Prediction</div>', unsafe_allow_html=True)
     st.markdown("#### Identify customers at risk of churning and take proactive actions.")
 
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
-        ### 📋 Problem Overview
+        ###  Problem Overview
         Customer churn is a critical business metric. It refers to the percentage of customers who stop using a company's service over a specific period.
         High churn rates can significantly impact revenue and growth.
 
@@ -225,7 +225,7 @@ if app_mode == "🏠 Home":
         """)
     with col2:
         st.markdown("""
-        ### 🧠 Solution Approach
+        ###  Solution Approach
         This app uses a **Machine Learning model** (SVM) trained on historical customer data to predict whether a customer will churn.
 
         **Features used:**
@@ -238,10 +238,10 @@ if app_mode == "🏠 Home":
         """)
 
     if data_type == "synthetic":
-        st.info("ℹ️ Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
+        st.info(" Using synthetic data for demonstration since 'customer_churn_data.csv' was not found.")
 
     st.markdown("---")
-    st.markdown("### 📊 Dataset Snapshot")
+    st.markdown("###  Dataset Snapshot")
     st.dataframe(data.head(10), use_container_width=True)
 
     # KPIs
@@ -256,7 +256,7 @@ if app_mode == "🏠 Home":
         st.metric("Avg Tenure (months)", f"{avg_tenure:.1f}")
 
     # Distributions
-    st.markdown("### 📈 Feature Distributions")
+    st.markdown("###  Feature Distributions")
     col1, col2 = st.columns(2)
     with col1:
         fig = px.histogram(data, x='Age', nbins=20, title='Age Distribution', color_discrete_sequence=['#1f77b4'])
@@ -276,7 +276,7 @@ if app_mode == "🏠 Home":
         st.plotly_chart(fig, use_container_width=True)
 
     # Churn analysis
-    st.markdown("### 🔍 Churn Analysis")
+    st.markdown("###  Churn Analysis")
     col1, col2 = st.columns(2)
     with col1:
         churn_counts = data['Churn'].map({0: 'No Churn', 1: 'Churn'}).value_counts().reset_index()
@@ -302,8 +302,8 @@ if app_mode == "🏠 Home":
 # =============================================================================
 # PAGE: PREDICT CHURN
 # =============================================================================
-elif app_mode == "🎯 Predict Churn":
-    st.markdown('<div class="main-header">🎯 Predict Customer Churn</div>', unsafe_allow_html=True)
+elif app_mode == " Predict Churn":
+    st.markdown('<div class="main-header"> Predict Customer Churn</div>', unsafe_allow_html=True)
     st.markdown("Enter customer details below to get a churn prediction.")
     st.markdown("---")
 
@@ -316,7 +316,7 @@ elif app_mode == "🎯 Predict Churn":
             monthly_charges = st.number_input("Monthly Charges ($)", min_value=0.0, max_value=500.0, value=70.0, help="Monthly service charges.")
 
         with col2:
-            st.markdown("### 💡 Feature Insights")
+            st.markdown("###  Feature Insights")
             st.info("""
             - **Age:** Younger customers may have higher churn rates.
             - **Gender:** Some patterns may exist in churn behavior.
@@ -324,7 +324,7 @@ elif app_mode == "🎯 Predict Churn":
             - **Monthly Charges:** Higher charges may increase churn likelihood.
             """)
 
-        submit = st.form_submit_button("🔮 Predict Churn", use_container_width=True)
+        submit = st.form_submit_button(" Predict Churn", use_container_width=True)
 
     if submit:
         # Convert gender: Female=1, Male=0 (as per training)
@@ -371,13 +371,13 @@ elif app_mode == "🎯 Predict Churn":
 # =============================================================================
 # PAGE: MODEL INSIGHTS
 # =============================================================================
-elif app_mode == "📊 Model Insights":
+elif app_mode == " Model Insights":
     st.markdown('<div class="main-header">📊 Model Insights & Performance</div>', unsafe_allow_html=True)
     st.markdown("Understand how the model works and its evaluation metrics.")
     st.markdown("---")
 
     # Performance metrics
-    st.markdown("### 🏆 Model Performance (on available data)")
+    st.markdown("###  Model Performance (on available data)")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(create_metric_card("Accuracy", format_metric(metrics['accuracy']), "Correct predictions"), unsafe_allow_html=True)
@@ -410,7 +410,7 @@ elif app_mode == "📊 Model Insights":
     st.plotly_chart(fig, use_container_width=True)
 
     # Model details
-    st.markdown("### 🤖 Model Details")
+    st.markdown("###  Model Details")
     st.write(f"**Model Type:** {type(model).__name__}")
     st.write(f"**Number of Features:** 4 (Age, Gender, Tenure, MonthlyCharges)")
     st.write("**Preprocessing:** StandardScaler used to scale numeric features.")
