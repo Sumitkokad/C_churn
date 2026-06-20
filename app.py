@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Customer Churn Predictor",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"  # This ensures sidebar is always expanded
+    initial_sidebar_state="expanded"
 )
 
 # =============================================================================
@@ -89,7 +89,34 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    /* Sidebar styling */
+    /* Custom top navigation bar */
+    .nav-bar {
+        background-color: #f8f9fa;
+        padding: 10px 0;
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+    .nav-item {
+        display: inline-block;
+        padding: 10px 25px;
+        margin: 0 5px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        color: #495057;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+    .nav-item:hover {
+        background-color: #e9ecef;
+        transform: translateY(-2px);
+    }
+    .nav-item.active {
+        background-color: #1f77b4;
+        color: white;
+    }
+    /* Ensure sidebar is visible */
     .css-1d391kg {
         background-color: #f8f9fa;
     }
@@ -131,7 +158,8 @@ def load_data():
     if os.path.exists('customer_churn_data.csv'):
         df = pd.read_csv('customer_churn_data.csv')
         # Preprocess the data (same as training)
-        df['InternetService'] = df['InternetService'].fillna('')
+        if 'InternetService' in df.columns:
+            df['InternetService'] = df['InternetService'].fillna('')
         # Encode churn
         df['Churn'] = df['Churn'].apply(lambda x: 1 if x == 'Yes' else 0)
         # Encode Gender
@@ -197,28 +225,34 @@ def create_metric_card(title, value, subtitle="", color_gradient=True):
     """
 
 # =============================================================================
-# SIDEBAR NAVIGATION - IMPROVED WITH DEBUG INFO
+# PAGE STATE MANAGEMENT
 # =============================================================================
+# Initialize session state for page navigation if not exists
+if 'page' not in st.session_state:
+    st.session_state.page = "Home"
 
-# Display a small note in the main area if sidebar is not visible
-st.sidebar.markdown("### Navigation")
-st.sidebar.markdown("---")
+# Function to change page
+def navigate_to(page):
+    st.session_state.page = page
+    st.rerun()
 
-# Define page options
-page_options = ["Home", "Predict Churn", "Model Insights"]
+# =============================================================================
+# SIDEBAR NAVIGATION
+# =============================================================================
+st.sidebar.title("Navigation")
 
-# Radio button with clean options
-app_mode = st.sidebar.radio(
-    "Select Page:",
-    page_options,
-    index=0,
-    key="navigation"
-)
+# Sidebar navigation buttons
+if st.sidebar.button("🏠 Home", use_container_width=True):
+    navigate_to("Home")
+if st.sidebar.button("🔮 Predict Churn", use_container_width=True):
+    navigate_to("Predict Churn")
+if st.sidebar.button("📊 Model Insights", use_container_width=True):
+    navigate_to("Model Insights")
 
 st.sidebar.markdown("---")
 
 # Sidebar with additional info
-with st.sidebar.expander("About", expanded=False):
+with st.sidebar.expander("ℹ️ About", expanded=False):
     st.markdown("""
     This app predicts customer churn using a trained SVM model.
     
@@ -230,30 +264,41 @@ with st.sidebar.expander("About", expanded=False):
     """)
 
 st.sidebar.info(f"Data source: {data_type.capitalize()} dataset")
-
-# Add a footer in sidebar
 st.sidebar.markdown("---")
 st.sidebar.caption("Built with Streamlit")
 
-# For debugging - show current page in sidebar
-st.sidebar.markdown(f"**Current Page:** {app_mode}")
-
 # =============================================================================
-# MAIN CONTENT AREA - Show sidebar toggle hint
+# TOP NAVIGATION BAR (Alternative Navigation)
 # =============================================================================
-
-# Add a small hint if sidebar might be collapsed
 st.markdown("""
-<div style="background-color: #e8f4f8; padding: 8px 15px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem; border-left: 4px solid #1f77b4;">
-    💡 <strong>Tip:</strong> Use the sidebar on the left to navigate between pages. 
-    Click the arrow icon in the top-left corner if the sidebar is hidden.
-</div>
+<div class="nav-bar">
+    <div style="text-align: center;">
 """, unsafe_allow_html=True)
+
+# Create three columns for top navigation
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("🏠 Home", use_container_width=True, key="top_home"):
+        navigate_to("Home")
+with col2:
+    if st.button("🔮 Predict Churn", use_container_width=True, key="top_predict"):
+        navigate_to("Predict Churn")
+with col3:
+    if st.button("📊 Model Insights", use_container_width=True, key="top_insights"):
+        navigate_to("Model Insights")
+
+st.markdown("</div></div>", unsafe_allow_html=True)
+
+# =============================================================================
+# PAGE RENDERER
+# =============================================================================
+# Get current page from session state
+current_page = st.session_state.page
 
 # =============================================================================
 # PAGE: HOME
 # =============================================================================
-if app_mode == "Home":
+if current_page == "Home":
     st.markdown('<div class="main-header">Customer Churn Prediction</div>', unsafe_allow_html=True)
     st.markdown("#### Identify customers at risk of churning and take proactive actions.")
 
@@ -349,7 +394,7 @@ if app_mode == "Home":
 # =============================================================================
 # PAGE: PREDICT CHURN
 # =============================================================================
-elif app_mode == "Predict Churn":
+elif current_page == "Predict Churn":
     st.markdown('<div class="main-header">Predict Customer Churn</div>', unsafe_allow_html=True)
     st.markdown("Enter customer details below to get a churn prediction.")
     st.markdown("---")
@@ -432,7 +477,7 @@ elif app_mode == "Predict Churn":
 # =============================================================================
 # PAGE: MODEL INSIGHTS
 # =============================================================================
-elif app_mode == "Model Insights":
+elif current_page == "Model Insights":
     st.markdown('<div class="main-header">Model Insights & Performance</div>', unsafe_allow_html=True)
     st.markdown("Understand how the model works and its evaluation metrics.")
     st.markdown("---")
